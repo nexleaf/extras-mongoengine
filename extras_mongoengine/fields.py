@@ -18,6 +18,8 @@ class TimedeltaField(BaseField):
         return self.prepare_query_value(None, value)
 
     def to_python(self, value):
+        if isinstance(value, timedelta):
+            return value
         return timedelta(seconds=value)
 
     def prepare_query_value(self, op, value):
