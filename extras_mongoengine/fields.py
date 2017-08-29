@@ -75,7 +75,8 @@ class EnumField(object):
 
     def __init__(self, enum, *args, **kwargs):
         self.enum = enum
-        kwargs['choices'] = [choice for choice in enum]
+        if 'choices' not in kwargs:
+            kwargs['choices'] = [(c.value, c.name) for c in enum]
         super(EnumField, self).__init__(*args, **kwargs)
 
     def __get_value(self, enum):
