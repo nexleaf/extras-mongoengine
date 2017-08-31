@@ -97,7 +97,7 @@ class EnumField(object):
 
     def _validate(self, value, **kwargs):
         return super(EnumField, self)._validate(
-                self.enum(self.__get_value(value)), **kwargs)
+                self.__get_value(value), **kwargs)
 
 
 class IntEnumField(EnumField, IntField):
