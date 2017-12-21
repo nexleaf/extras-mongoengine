@@ -1,3 +1,3 @@
-import fields
+from . import fields
 
 __all__ = ('fields')
