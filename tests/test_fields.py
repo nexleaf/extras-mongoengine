@@ -15,8 +15,17 @@ class OldStyleTimedelta(timedelta):
         raise AttributeError
 
 class TimedeltaFieldTestCase(unittest.TestCase):
+
     def setUp(self):
+        connect(db='extrasmongoenginetest')
+        self.db = get_db()
         self.field = TimedeltaField()
+
+    def tearDown(self):
+        for collection in self.db.collection_names():
+            if 'system.' in collection:
+                continue
+            self.db.drop_collection(collection)
 
     def test_construct(self):
         self.assertIsInstance(self.field, TimedeltaField)
@@ -28,6 +37,21 @@ class TimedeltaFieldTestCase(unittest.TestCase):
     def test_total_seconds_26(self):
         value = OldStyleTimedelta(minutes=1, seconds=10)
         self.assertEqual(self.field.total_seconds(value), 70)
+
+    def test_number_initialization(self):
+        class Doc(Document):
+            time = TimedeltaField()
+
+        doc = Doc(time=3600).save()
+        self.assertEqual(doc.time, timedelta(hours=1))
+
+    def test_timedelta_initialization(self):
+        class Doc(Document):
+            time = TimedeltaField()
+
+        test_time = timedelta(days=2)
+        doc = Doc(time=test_time).save()
+        self.assertEqual(doc.time, test_time)
 
 class LowerStringFieldTestCase(unittest.TestCase):
 

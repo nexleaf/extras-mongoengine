@@ -1,6 +1,14 @@
+import operator
+
 from datetime import timedelta
 from mongoengine.base import BaseField
-from mongoengine.fields import IntField, StringField, EmailField
+from mongoengine.fields import EmailField, IntField, ListField, StringField
+
+try:
+    from functools import reduce
+except ImportError:
+    # reduce is a builtin in Python2
+    pass
 
 
 class TimedeltaField(BaseField):
@@ -18,6 +26,8 @@ class TimedeltaField(BaseField):
         return self.prepare_query_value(None, value)
 
     def to_python(self, value):
+        if isinstance(value, timedelta):
+            return value
         return timedelta(seconds=value)
 
     def prepare_query_value(self, op, value):
@@ -75,7 +85,8 @@ class EnumField(object):
 
     def __init__(self, enum, *args, **kwargs):
         self.enum = enum
-        kwargs['choices'] = [choice for choice in enum]
+        if 'choices' not in kwargs:
+            kwargs['choices'] = [(c.value, c.name) for c in enum]
         super(EnumField, self).__init__(*args, **kwargs)
 
     def __get_value(self, enum):
@@ -96,13 +107,40 @@ class EnumField(object):
 
     def _validate(self, value, **kwargs):
         return super(EnumField, self)._validate(
-                self.enum(self.__get_value(value)), **kwargs)
+                self.__get_value(value), **kwargs)
 
 
 class IntEnumField(EnumField, IntField):
     """A variation on :class:`EnumField` for only int containing enumeration.
     """
     pass
+
+
+class IntFlagField(ListField):
+    def __init__(self, enum, **kwargs):
+        super(IntFlagField, self).__init__(IntEnumField(enum), **kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        return self.field.enum(reduce(
+            operator.or_, instance._data.get(self.name, []), 0))
+
+    def __set__(self, instance, value):
+        # copy mongoengine
+        if value is None:
+            if self.null:
+                value = None
+            elif self.default is not None:
+                value = self.default
+                if callable(value):
+                    value = value()
+
+        if value is not None and not isinstance(value, list):
+            value = [i for i in self.field.enum if i and i & value == i]
+
+        super(IntFlagField, self).__set__(instance, value)
 
 
 class StringEnumField(EnumField, StringField):
